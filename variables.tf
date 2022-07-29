@@ -10,5 +10,9 @@ variable "gcp_subnets" {
   type = list(object({
     region = string    
     subnet_ip = string
+    secondary_ranges = list(object({
+      purpose = string
+      subnet_ip = string
+    }))
   }))
 }
