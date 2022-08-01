@@ -16,3 +16,8 @@ variable "gcp_subnets" {
     }))
   }))
 }
+
+variable "regional_cluster" {
+  description = "increase the availability of both a cluster's control plane and its nodes by replicating them across multiple zones in a region."
+  default     = true # we believe this should be on by default
+}

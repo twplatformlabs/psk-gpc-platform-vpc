@@ -45,3 +45,45 @@ module "gcp-vpc-module" {
 
   # TODO - routes for igw egress
 }
+
+locals {
+  cluster_type = "shared-vpc"
+}
+
+data "google_client_config" "default" {}
+
+# TODO - output required network values in vpc module to consume in below module
+# TODO - move to sep module
+module "gke" {
+  source                 = "terraform-google-modules/kubernetes-engine/google"
+  version                = "22.0.0"
+  count                  = length(local.subnets_map)
+  project_id             = var.gcp_project_id
+  name                   = "test-cluster"
+  region                 = local.subnets_map[count.index].subnet_region
+  regional               = var.regional_cluster
+  network                = var.gcp_network_name
+  network_project_id     = var.gcp_project_id
+  subnetwork             = local.subnets_map[count.index].subnet_name
+  # TODO - refactor these to fetch by key name, not 0/1 index
+  ip_range_pods          = local.secondary_ranges[ local.subnets_map[count.index].subnet_name ][0].range_name
+  ip_range_services      = local.secondary_ranges[ local.subnets_map[count.index].subnet_name ][1].range_name
+  create_service_account = true
+
+  node_pools = [
+    {
+      name               = "base-node-pool"
+      machine_type       = "e2-medium"
+      min_count          = 1
+      max_count          = 3
+      local_ssd_count    = 0
+      disk_size_gb       = 100
+      disk_type          = "pd-standard"
+      image_type         = "COS_CONTAINERD"
+      auto_repair        = true
+      auto_upgrade       = true
+      preemptible        = false
+      initial_node_count = 3
+    },
+  ]
+}
