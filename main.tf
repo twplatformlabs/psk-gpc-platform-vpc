@@ -46,10 +46,6 @@ module "gcp-vpc-module" {
   # TODO - routes for igw egress
 }
 
-locals {
-  cluster_type = "shared-vpc"
-}
-
 data "google_client_config" "default" {}
 
 # TODO - output required network values in vpc module to consume in below module
