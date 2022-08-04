@@ -1,7 +1,6 @@
 locals {
   subnets_map = flatten([
     for subnet in var.gcp_subnets: {
-      # TODO - nw name should map to primary/secondary purpose, like pod or services nw
       subnet_name           = "${var.gcp_network_name}-${subnet.region}-subnet-01"
       subnet_ip             = subnet.subnet_ip
       subnet_region         = subnet.region
