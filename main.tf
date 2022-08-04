@@ -15,6 +15,7 @@ locals {
     }
   ])
 
+  # TODO - routes for igw egress
   subnets = [
     for subnet in local.subnets_map : {
       subnet_name = subnet.subnet_name
@@ -33,16 +34,10 @@ locals {
 
 
 module "gcp-vpc-module" {
-  source  = "terraform-google-modules/network/google"
-  version = "5.1.0"
-  project_id   = var.gcp_project_id
-  network_name = var.gcp_network_name
-
-  subnets = local.subnets
-
+  source           = "terraform-google-modules/network/google"
+  version          = "5.1.0"
+  project_id       = var.gcp_project_id
+  network_name     = var.gcp_network_name
+  subnets          = local.subnets
   secondary_ranges = local.secondary_ranges
-
-  # TODO - routes for igw egress
 }
-
-data "google_client_config" "default" {}
