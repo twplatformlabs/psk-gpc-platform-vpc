@@ -1,6 +1,6 @@
 {
   "network_name": "dps-gcp-sbx",
-  "project_id"  : "enhanced-gizmo-357515",
+  "project_id"  : "<project_id>",
   "subnets" : [
     {
       "region" : "us-central1",
