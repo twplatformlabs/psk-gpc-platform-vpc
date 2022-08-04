@@ -29,7 +29,6 @@ locals {
   secondary_ranges = {
     for subnet in local.subnets_map : "${subnet.subnet_name}" => subnet.secondary_ranges
   }
-
 }
 
 
