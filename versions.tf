@@ -1,10 +1,18 @@
 terraform {
-  required_version = "~> 1.1"
+  required_version = "~> 1.2"
 
   required_providers {
     google = {
       source = "hashicorp/google"
       version = "4.75.0"
+    }
+  }
+
+  backend "remote" {
+    hostname     = "app.terraform.io"
+    organization = "twdps"
+    workspaces {
+      prefix = "psk-gcp-platform-vpc-"
     }
   }
 }
