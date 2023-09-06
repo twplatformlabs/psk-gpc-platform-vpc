@@ -43,6 +43,7 @@ module "gc-vpc-module" {
   secondary_ranges                       = local.secondary_ranges
   delete_default_internet_gateway_routes = true
   shared_vpc_host                        = var.share_vpc
+  mtu                                    = 1500
 
   routes = [
     {
