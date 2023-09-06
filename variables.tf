@@ -15,17 +15,17 @@ variable "gc_network_name" {
 
 variable "gc_subnets" {
   type = list(object({
-    region           = string
-    subnet_ip        = string
+    region    = string
+    subnet_ip = string
     secondary_ranges = list(object({
-      purpose        = string
-      subnet_ip      = string
+      purpose   = string
+      subnet_ip = string
     }))
   }))
 }
 
 variable "share_vpc" {
-  type = bool
+  type        = bool
   description = "Publish VPC as shared to other projects"
-  default = true
+  default     = true
 }

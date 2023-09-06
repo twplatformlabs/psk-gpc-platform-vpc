@@ -3,7 +3,7 @@ terraform {
 
   required_providers {
     google = {
-      source = "hashicorp/google"
+      source  = "hashicorp/google"
       version = "4.75.0"
     }
   }
@@ -18,6 +18,6 @@ terraform {
 }
 
 provider "google" {
-  project = var.gc_project_id
+  project                     = var.gc_project_id
   impersonate_service_account = "empc-vpc-sa@${var.gc_project_id}.iam.gserviceaccount.com"
 }

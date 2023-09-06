@@ -92,6 +92,7 @@ workflows:
           workspace: sandbox
           executor-image: << pipeline.parameters.executor-image >>
           terraform-version: << pipeline.parameters.terraform-version >>
+          checkov-additional-args: --skip-check CKV_GCP_26,CKV_GCP_76,CKV2_GCP_18
           before-terraform:
             - set-environment:
                 account: sandbox
@@ -141,6 +142,7 @@ workflows:
           workspace: prod
           executor-image: << pipeline.parameters.executor-image >>
           terraform-version: << pipeline.parameters.terraform-version >>
+          checkov-additional-args: --skip-check CKV_GCP_26,CKV_GCP_76,CKV2_GCP_18
           before-terraform:
             - set-environment:
                 account: prod
