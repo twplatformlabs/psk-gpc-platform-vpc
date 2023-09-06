@@ -2,3 +2,5 @@
 .venv
 .terraform.lock.hcl
 *.tfstate*
+gc-platform-*.json
+gcp-creds.json

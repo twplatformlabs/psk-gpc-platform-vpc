@@ -1,16 +1,21 @@
-variable "gcp_project_id" {
+variable "gc_org_id" {
+  type        = string
+  description = "The GC organization the project is hosted under"
+}
+
+variable "gc_project_id" {
   type        = string
   description = "The project ID to host the network in"
 }
 
-variable "gcp_network_name" {
+variable "gc_network_name" {
   type        = string
-  description = "name of gcp vpc network"
+  description = "name of gc vpc network"
 }
 
-variable "gcp_subnets" {
+variable "gc_subnets" {
   type = list(object({
-    region           = string    
+    region           = string
     subnet_ip        = string
     secondary_ranges = list(object({
       purpose        = string
@@ -19,7 +24,8 @@ variable "gcp_subnets" {
   }))
 }
 
-variable "regional_cluster" {
-  description = "increase the availability of both a cluster's control plane and its nodes by replicating them across multiple zones in a region."
-  default     = true # we believe this should be on by default
+variable "share_vpc" {
+  type = bool
+  description = "Publish VPC as shared to other projects"
+  default = true
 }

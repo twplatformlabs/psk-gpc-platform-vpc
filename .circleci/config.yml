@@ -1,0 +1,206 @@
+---
+version: 2.1
+
+orbs:
+  executor-tools: twdps/executor-tools@1.10.0
+  terraform: twdps/terraform@0.15.0
+  op: twdps/onepassword@1.2.0
+  do: twdps/pipeline-events@2.0.0
+
+# ==== global pipeline parameters
+
+parameters:
+  terraform-version:
+    description: terraform version for all jobs
+    type: string
+    default: "1.5.1"
+  context:
+    description: circleci context for all jobs
+    type: string
+    default: empc-lab
+  executor-image:
+    description: image to use for terraform runs
+    type: string
+    default: twdps/circleci-infra-gcp:alpine-stable
+
+# ==== triggers
+on-push-main: &on-push-main
+  branches:
+    only: /main/
+  tags:
+    ignore: /.*/
+
+on-tag-main: &on-tag-main
+  branches:
+    ignore: /.*/
+  tags:
+    only: /.*/
+
+commands:
+  set-environment:
+    description: generate environment credentials and configuration from templates
+    parameters:
+      account:
+        description: account to be configured
+        type: string
+    steps:
+      - op/env:
+          env-file: op.<< parameters.account >>.env
+      - run:
+          name: set ~/.terraformrc
+          command: op inject -i tpl/terraformrc.tpl -o ~/.terraformrc
+      - run:
+          name: set << parameters.account >> environment variables
+          command: op inject -i environments/gc-platform-<< parameters.account >>.auto.tfvars.json.tpl -o gc-platform-<< parameters.account >>.auto.tfvars.json
+      - run:
+          name: Get GC cred file
+          command: op document get gcp-<< parameters.account >>-creds.json -o gcp-creds.json
+jobs:
+  validate configuration:
+    description: |
+      tests of the resulting infrastructure resources.
+    docker:
+      - image: << pipeline.parameters.executor-image >>
+    environment:
+      TF_WORKSPACE: psk-gcp-platform-vpc-<< parameters.account >>
+    shell: op run --env-file op.<< parameters.account >>.env -- /bin/sh -eo pipefail
+    parameters:
+      account:
+        description: sandbox or production account configuration
+        type: string
+    steps:
+      - checkout
+      - setup_remote_docker
+      - set-environment:
+          account: << parameters.account >>
+      - run:
+          name: test << parameters.account >> configuration
+          command: bash scripts/test_configuration.sh << parameters.account >>
+
+workflows:
+  version: 2
+
+  deploy vpc to sandbox:
+    jobs:
+      - terraform/plan:
+          name: sandbox change plan
+          context: << pipeline.parameters.context >>
+          shell: op run --env-file op.sandbox.env -- /bin/bash -eo pipefail
+          tfc-local-execution-mode: true
+          tfc-organization: twdps
+          tfc-workspace-name: psk-gcp-platform-vpc-sandbox
+          workspace: sandbox
+          executor-image: << pipeline.parameters.executor-image >>
+          terraform-version: << pipeline.parameters.terraform-version >>
+          before-terraform:
+            - set-environment:
+                account: sandbox
+          filters: *on-push-main
+
+      - approve sandbox changes:
+          type: approval
+          requires:
+            - sandbox change plan
+          filters: *on-push-main
+
+      - terraform/apply:
+          name: apply sandbox changes
+          context: << pipeline.parameters.context >>
+          shell: op run --env-file op.sandbox.env -- /bin/bash -eo pipefail
+          workspace: sandbox
+          executor-image: << pipeline.parameters.executor-image >>
+          terraform-version: << pipeline.parameters.terraform-version >>
+          before-terraform:
+            - set-environment:
+                account: sandbox
+          after-terraform:
+            - do/slack-webhook:
+                message: psk-gcp-platform-vpc sandbox deployment
+                webhook-url: $LAB_EVENTS_CHANNEL_WEBHOOK
+          requires:
+            - approve sandbox changes
+          filters: *on-push-main
+
+      - validate configuration:
+          name: test sandbox vpc configuration
+          context: << pipeline.parameters.context >>
+          account: sandbox
+          requires:
+            - apply sandbox changes
+          filters: *on-push-main
+
+  deploy vpc to prod:
+    jobs:
+      - terraform/plan:
+          name: prod change plan
+          context: << pipeline.parameters.context >>
+          shell: op run --env-file op.prod.env -- /bin/bash -eo pipefail
+          tfc-local-execution-mode: true
+          tfc-organization: twdps
+          tfc-workspace-name: psk-gcp-platform-vpc-prod
+          workspace: prod
+          executor-image: << pipeline.parameters.executor-image >>
+          terraform-version: << pipeline.parameters.terraform-version >>
+          before-terraform:
+            - set-environment:
+                account: prod
+          filters: *on-tag-main
+
+      - approve prod changes:
+          type: approval
+          requires:
+            - prod change plan
+          filters: *on-tag-main
+
+      - terraform/apply:
+          name: apply prod changes
+          context: << pipeline.parameters.context >>
+          shell: op run --env-file op.prod.env -- /bin/bash -eo pipefail
+          workspace: prod
+          executor-image: << pipeline.parameters.executor-image >>
+          terraform-version: << pipeline.parameters.terraform-version >>
+          before-terraform:
+            - set-environment:
+                account: prod
+          after-terraform:
+            - do/slack-webhook:
+                message: psk-gcp-platform-vpc prod release
+                webhook-url: $LAB_EVENTS_CHANNEL_WEBHOOK
+          requires:
+            - approve prod changes
+          filters: *on-tag-main
+
+      - validate configuration:
+          name: test prod gcp vpc configuration
+          context: << pipeline.parameters.context >>
+          account: prod
+          requires:
+            - apply prod changes
+          filters: *on-tag-main
+
+#  generate-release-notes:
+#    jobs:
+#      - executor-tools/release:
+#          name: release-psk-gcp-platform-vpc
+#          context: << pipeline.parameters.context >>
+#          shell: op run --env-file op.prod.env -- /bin/bash -eo pipefail
+#          on-tag: true
+#          filters: *on-tag-main
+
+  nightly vpc configuration validation:
+    triggers:
+      - schedule:
+          cron: "0 1 * * *"
+          filters:
+            branches:
+              only:
+                - main
+    jobs:
+      - validate configuration:
+          name: nightly sandbox gcp vpc validation
+          context: << pipeline.parameters.context >>
+          account: sandbox
+      - validate configuration:
+          name: nightly prod gcp vpc validation
+          context: << pipeline.parameters.context >>
+          account: prod
